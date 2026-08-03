@@ -80,7 +80,7 @@ struct MainView: View {
                 VStack(spacing: 10) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
-                            ForEach(viewModel.clips.indices, id: \.self) { index {
+                            ForEach(viewModel.clips.indices, id: \.self) { index in
                                 ZStack(alignment: .topTrailing) {
                                     RoundedRectangle(cornerRadius: 8)
                                         .fill(Color(white: 0.15))
