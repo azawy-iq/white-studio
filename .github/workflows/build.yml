@@ -3,7 +3,8 @@ name: Build iOS IPA
 on:
   push:
     branches: [ "main", "master" ]
-  workflow_dispatch:
+  pull_request:
+    branches: [ "main", "master" ]
 
 jobs:
   build-ipa:
@@ -19,20 +20,6 @@ jobs:
       with:
         xcode-version: '15.2'
 
-    - name: Build and Archive
+    - name: Build Project for Testing / Archive
       run: |
-        xcodebuild -project WhiteStudio.xcodeproj -scheme WhiteStudio -destination 'generic/platform=iOS' -archivePath build/WhiteStudio.xcarchive archive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || true
-
-    - name: Package App / Build Artifact
-      run: |
-        mkdir -p build/Payload
-        if [ -d "build/WhiteStudio.xcarchive/Products/Applications/WhiteStudio.app" ]; then
-          cp -r "build/WhiteStudio.xcarchive/Products/Applications/WhiteStudio.app" build/Payload/
-          cd build && zip -r WhiteStudio.ipa Payload
-        fi
-
-    - name: Upload IPA Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: WhiteStudio-IPA
-        path: build/WhiteStudio.ipa
+        xcodebuild -project WhiteStudio.xcodeproj -scheme WhiteStudio -destination 'generic/platform=iOS Simulator' clean build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
