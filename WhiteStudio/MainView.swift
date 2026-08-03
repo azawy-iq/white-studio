@@ -2,9 +2,6 @@ import SwiftUI
 import AVKit
 import PhotosUI
 
-// تأكد من إضافة هذا الخط إلى ملف Info.plist الخاص بك لدعم الخطوط المخصصة
-// UIAppFonts -> MTLombardiaScribble.otf (اسم ملف الخط التقريبي)
-
 struct MainView: View {
     @StateObject private var viewModel = StudioViewModel()
     @State private var showSettings = false
@@ -12,35 +9,25 @@ struct MainView: View {
 
     var body: some View {
         ZStack {
-            // الخلفية: صورة من الفيديو الحالي مع تأثير ضبابي وتعتيم
-            if let player = viewModel.currentPlayer {
-                ZStack {
-                    VideoPlayer(player: player)
-                        .aspectRatio(contentMode: .fill)
-                        .edgesIgnoringSafeArea(.all)
-                        .blur(radius: 40)
-                    // طبقة تعتيم لضمان وضوح الواجهة
-                    Color.black.opacity(0.5)
-                        .edgesIgnoringSafeArea(.all)
-                }
-            } else {
-                // خلفية سوداء صلبة في حال عدم وجود فيديو
-                Color.black.edgesIgnoringSafeArea(.all)
-            }
+            // خلفية زجاجية متدرجة تملأ الشاشة بالكامل لإلغاء أي حواف سوداء
+            LinearGradient(
+                colors: [Color(red: 0.05, green: 0.05, blue: 0.1), Color.black, Color(red: 0.08, green: 0.05, blue: 0.15)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            // المحتوى الأساسي للواجهة
             GeometryReader { geometry in
                 VStack(spacing: 0) {
-                    // 1. شريط التنقل العلوي (زجاجي ومحمي أسفل النوتش)
+                    // شريط التنقل العلوي الزجاجي (مؤمن أسفل النوتش والجزيرة الديناميكية)
                     HStack {
                         Button(action: { showSettings.toggle() }) {
                             Image(systemName: "gearshape.fill")
-                                .foregroundColor(.white.opacity(0.9))
-                                .font(.system(size: 17))
+                                .foregroundColor(.white)
+                                .font(.system(size: 16))
                                 .frame(width: 38, height: 38)
-                                .background(Material.thinMaterial)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 0.5))
+                                .background(.ultraThinMaterial, in: Circle())
+                                .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
                         }
                         .sheet(isPresented: $showSettings) {
                             SettingsView()
@@ -49,211 +36,152 @@ struct MainView: View {
                         Spacer()
 
                         Text("WHITE STUDIO")
-                            .font(.system(size: 16, weight: .black, design: .monospaced))
-                            .tracking(3.5)
+                            .font(.system(size: 15, weight: .black, design: .monospaced))
+                            .tracking(3)
                             .foregroundColor(.white)
 
                         Spacer()
 
                         Button(action: {
-                            viewModel.exportProject()
+                            viewModel.exportProjectWithEmbeddedLyrics()
                             showExportAlert = true
                         }) {
                             Text("EXPORT")
-                                .font(.system(size: 13, weight: .bold))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Material.ultraThinMaterial)
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 0.5))
+                                .font(.system(size: 12, weight: .bold))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(.ultraThinMaterial, in: Capsule())
+                                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
                                 .foregroundColor(.white)
                         }
-                        .alert("تصدير المشروع", isPresented: $showExportAlert) {
+                        .alert("تصدير الفيديو", isPresented: $showExportAlert) {
                             Button("موافق", role: .cancel) { }
                         } message: {
-                            Text(viewModel.exportMessage)
+                            Text(viewModel.exportStatusMessage)
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    // هذا الحشو (padding) هو مفتاح الحماية من النوتش
-                    .padding(.top, geometry.safeAreaInsets.top) 
-                    .background(Material.ultraThinMaterial)
-                    .overlay(Rectangle().frame(height: 0.5).foregroundColor(Color.white.opacity(0.1)), alignment: .bottom)
+                    .padding(.top, geometry.safeAreaInsets.top) // حماية النوتش
+                    .background(.ultraThinMaterial)
 
-                    Spacer()
-
-                    // 2. مساحة العرض الرئيسية (Canvas) - ملء الشاشة بالكامل
-                    ZStack(alignment: .bottom) {
-                        // مشغل الفيديو الرئيسي (يملأ المساحة بالكامل)
+                    // مساحة العرض الرئيسية (Canvas) - ملء الشاشة وبدون حواف
+                    ZStack {
                         if let player = viewModel.currentPlayer {
                             VideoPlayer(player: player)
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: geometry.size.width, height: geometry.size.height * 0.55) // نسبة ذهبية للكاميرا
+                                .frame(width: geometry.size.width, height: geometry.size.height * 0.58)
                                 .clipped()
-                                // إزالة الحدود الدائرية السابقة لجعلها ملء الشاشة الحقيقي
+                                .cornerRadius(16)
+                                .padding(.horizontal, 8)
                         } else if let image = viewModel.currentImage {
                             Image(uiImage: image)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: geometry.size.width, height: geometry.size.height * 0.55)
+                                .frame(width: geometry.size.width, height: geometry.size.height * 0.58)
                                 .clipped()
+                                .cornerRadius(16)
+                                .padding(.horizontal, 8)
                         } else {
-                            // شاشة فارغة جذابة
-                            VStack(spacing: 15) {
-                                Image(systemName: "video.fill.badge.plus")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(.white.opacity(0.3))
-                                Text("أضف مقطع فيديو أو صورة للبدء")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.5))
-                            }
-                            .frame(width: geometry.size.width, height: geometry.size.height * 0.55)
-                            .background(Color.black.opacity(0.2))
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(.ultraThinMaterial)
+                                .frame(width: geometry.size.width - 16, height: geometry.size.height * 0.58)
+                                .overlay(
+                                    VStack(spacing: 8) {
+                                        Image(systemName: "sparkles.tv")
+                                            .font(.system(size: 36))
+                                            .foregroundColor(.white.opacity(0.5))
+                                        Text("أضف فيديو أو صور لدمج الكلمات والإيقاع")
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
+                                )
                         }
 
-                        // طبقة عرض الكلام/الترجمة (فوق الفيديو بخلفية شفافة زجاجية)
-                        if !viewModel.currentSubtitle.isEmpty {
-                            Text(viewModel.currentSubtitle)
-                                // استخدمت خطاً مشابهاً لـ Video Star المكتوب باليد (تأكد من إضافته للمشروع)
-                                .font(.custom("MTLombardiaScribble", size: 24)) 
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(Material.ultraThinMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 18))
-                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.2), lineWidth: 0.5))
-                                .padding(.bottom, 20)
-                                .shadow(color: Color.black.opacity(0.3), radius: 5, x: 0, y: 2)
+                        // الكلمات المدمجة (تظهر كجزء من الفيديو وليست مجرد ترجمة خارجية)
+                        if !viewModel.embeddedLyricText.isEmpty {
+                            VStack {
+                                Spacer()
+                                Text(viewModel.embeddedLyricText)
+                                    .font(.system(size: 26, weight: .heavy, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .shadow(color: .black, radius: 3, x: 0, y: 2)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 8)
+                                    .background(Color.black.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                    .padding(.bottom, 40)
+                            }
                         }
                     }
-                    // تمكين المساحة لتكون مرنة
                     .frame(maxHeight: .infinity)
 
-                    Spacer()
-
-                    // 3. شريط التايملاين وإدارة الطبقات (زجاجي)
-                    VStack(spacing: 10) {
+                    // شريط التايملاين والأدوات
+                    VStack(spacing: 8) {
+                        // شريط المقاطع المصغرة
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
+                            HStack(spacing: 10) {
                                 ForEach(viewModel.mediaItems.indices, id: \.self) { index in
                                     ZStack(alignment: .topTrailing) {
-                                        // صورة مصغرة من الفيديو
-                                        if case .video(let url) = viewModel.mediaItems[index] {
-                                            VideoThumbView(url: url)
-                                                .frame(width: 80, height: 50)
-                                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        } else if case .image(let image) = viewModel.mediaItems[index] {
-                                            Image(uiImage: image)
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 80, height: 50)
-                                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                        }
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(.ultraThinMaterial)
+                                            .frame(width: 70, height: 45)
+                                            .overlay(
+                                                Text("مقطع \(index + 1)")
+                                                    .font(.system(size: 10, weight: .bold))
+                                                    .foregroundColor(.white)
+                                            )
 
-                                        // رقم المقطع
-                                        Text("\(index + 1)")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.black)
-                                            .padding(4)
-                                            .background(Color.white.opacity(0.8))
-                                            .clipShape(Circle())
-                                            .offset(x: -4, y: 4)
-
-                                        // زر الحذف
                                         Button(action: { viewModel.removeMedia(at: index) }) {
                                             Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(.red.opacity(0.8))
-                                                .font(.system(size: 16))
-                                                .background(Circle().fill(Color.white))
+                                                .foregroundColor(.red)
+                                                .font(.system(size: 14))
+                                                .background(Circle().fill(.white))
                                         }
-                                        .offset(x: 6, y: -6)
+                                        .offset(x: 4, y: -4)
                                     }
-                                    .onTapGesture {
-                                        viewModel.playMedia(at: index)
-                                    }
-                                    // تأثير تحديد المقطع النشط
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(viewModel.currentIndex == index ? Color.white : Color.clear, lineWidth: 2))
+                                    .onTapGesture { viewModel.playMedia(at: index) }
                                 }
 
-                                // زر الإضافة (+)
                                 PhotosPicker(selection: $viewModel.selectedItem, matching: .any(of: [.videos, .images])) {
                                     RoundedRectangle(cornerRadius: 10)
-                                        .fill(Material.thinMaterial)
-                                        .frame(width: 80, height: 50)
+                                        .fill(.ultraThinMaterial)
+                                        .frame(width: 70, height: 45)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 10)
-                                                .strokeBorder(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                                                .strokeBorder(Color.white.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [4]))
                                         )
                                         .overlay(
                                             Image(systemName: "plus")
-                                                .foregroundColor(.white.opacity(0.7))
-                                                .font(.system(size: 22))
+                                                .foregroundColor(.white)
+                                                .font(.system(size: 16))
                                         )
                                 }
                                 .onChange(of: viewModel.selectedItem) { newItem in
                                     Task { await viewModel.loadMedia(from: newItem) }
                                 }
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
                         }
-                        .background(Material.thinMaterial)
+                        .frame(height: 50)
 
-                        // 4. شريط الأدوات الاحترافي (زجاجي بالكامل ومفعل تماماً)
-                        HStack(spacing: 12) {
+                        // شريط الأدوات الزجاجي السفلي
+                        HStack(spacing: 16) {
                             ToolButton(icon: "scissors", label: "القص والمدة") { viewModel.activeTool = .duration }
-                            ToolButton(icon: "wand.and.rays.inverse", label: "العزل والفلتر") { viewModel.toggleIsolation() }
-                            ToolButton(icon: "textformat.alt", label: "الخطوط والكلام") { viewModel.activeTool = .lyrics }
-                            ToolButton(icon: "waveform.path.ecg", label: "استخراج الصوت") { viewModel.extractAudioFromVideo() }
-                            ToolButton(icon: "sparkles.square.filled.on.square", label: "مزامنة تلقائية") { viewModel.autoGenerateLyricsAndDialect() }
+                            ToolButton(icon: "wand.and.rays", label: "العزل والفلتر") { viewModel.toggleIsolation() }
+                            ToolButton(icon: "textformat", label: "الخطوط والكلام") { viewModel.activeTool = .lyrics }
+                            ToolButton(icon: "waveform", label: "استخراج الصوت") { viewModel.extractAudio() }
+                            ToolButton(icon: "sparkles", label: "مزامنة تلقائية") { viewModel.autoSyncMediaAndLyrics() }
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.bottom, 20)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 8)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
+                        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.white.opacity(0.15), lineWidth: 1))
                     }
-                    .background(Material.ultraThinMaterial)
-                    .ignoresSafeArea(edges: .bottom) // تمديد الشريط السفلي خلف شريط الإيماءات
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 10)
                 }
-            }
-        }
-        .statusBarHidden(false) // إظهار شريط الحالة (الساعة والبطارية) لتبدو كـ Native App
-    }
-}
-
-// مساعد لعرض الصورة المصغرة للفيديو في التايملاين
-struct VideoThumbView: View {
-    let url: URL
-    @State private var image: UIImage? = nil
-
-    var body: some View {
-        Group {
-            if let image = image {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                Color.black.opacity(0.3)
-                    .onAppear {
-                        generateThumbnail()
-                    }
-            }
-        }
-    }
-
-    func generateThumbnail() {
-        DispatchQueue.global().async {
-            let asset = AVAsset(url: url)
-            let generator = AVAssetImageGenerator(asset: asset)
-            generator.appliesPreferredTrackTransform = true
-            let time = CMTime(seconds: 0.5, preferredTimescale: 60)
-            do {
-                let cgImage = try generator.copyCGImage(at: time, actualTime: nil)
-                DispatchQueue.main.async {
-                    self.image = UIImage(cgImage: cgImage)
-                }
-            } catch {
-                print("Error generating thumbnail: \(error)")
             }
         }
     }
@@ -266,54 +194,33 @@ struct ToolButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(.white.opacity(0.9))
-                    .frame(width: 44, height: 44)
-                    .background(Material.thinMaterial)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                    .font(.system(size: 16))
+                    .foregroundColor(.white)
+                    .frame(width: 38, height: 38)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.white.opacity(0.8))
             }
         }
-        .frame(maxWidth: .infinity) // توزيع الأزرار بالتساوي
     }
 }
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
-    @AppStorage("isHDExport") private var isHDExport = true
-    @AppStorage("autoSubtitles") private var autoSubtitles = true
+    @AppStorage("hdExport") var hdExport = true
 
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("إعدادات التصدير")) {
-                    Toggle("تصدير بجودة عالية (4K/HD)", isOn: $isHDExport)
-                }
-                Section(header: Text("إعدادات الكلام")) {
-                    Toggle("التوليد التلقائي للكلمات والترجمة", isOn: $autoSubtitles)
-                }
-                Section(header: Text("معلومات")) {
-                    HStack {
-                        Text("الإصدار")
-                        Spacer()
-                        Text("1.1 (White Studio)")
-                            .foregroundColor(.gray)
-                    }
-                }
+                Toggle("تصدير بجودة عالية جداً (HD)", isOn: $hdExport)
             }
             .navigationTitle("الإعدادات")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("تم") { dismiss() }
-                        .fontWeight(.bold)
-                }
-            }
+            .toolbar { Button("تم") { dismiss() } }
         }
     }
 }
