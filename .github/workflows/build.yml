@@ -9,7 +9,7 @@ jobs:
   build-ipa:
     name: Build iOS App and generate IPA
     runs-on: macos-14
-    
+
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
@@ -21,42 +21,19 @@ jobs:
 
     - name: Compile Real App and Generate Valid IPA
       run: |
+        set -e
         mkdir -p build/Payload/WhiteStudio.app
-        
-        # تجميع ملفات مشروعك الحقيقية لهندسة جهاز حقيقي (iphoneos) وليس المحاكي
-        if [ -d "WhiteStudio" ]; then
-          swiftc -target arm64-apple-ios16.0 \
-                 -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-                 -parse-as-library \
-                 -emit-executable \
-                 -o build/Payload/WhiteStudio.app/WhiteStudio \
-                 WhiteStudio/*.swift
-        fi
-        
-        # في حال حدوث أي استثناء، دمج كود احتياطي بسيط بنفس هندسة الجهاز الحقيقي
-        if [ ! -f "build/Payload/WhiteStudio.app/WhiteStudio" ]; then
-          cat << 'EOF' > main_compile.swift
-          import SwiftUI
-          @main
-          struct WhiteStudioApp: App {
-              var body: some Scene {
-                  WindowGroup {
-                      Text("White Studio")
-                  }
-              }
-          }
-          EOF
-          swiftc -target arm64-apple-ios16.0 \
-                 -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-                 -parse-as-library \
-                 -emit-executable \
-                 -o build/Payload/WhiteStudio.app/WhiteStudio \
-                 main_compile.swift
-        fi
 
-        # إنشاء ملف Info.plist مع مفتاح CFBundleExecutable المطلوب لأدوات التوقيع
-        cat << 'EOF' > build/Payload/WhiteStudio.app/Info.plist
-        <?xml version="1.0" encoding="UTF-8"?>
+        echo "Compiling WhiteStudio sources for a real iOS device..."
+        xcrun -sdk iphoneos swiftc \
+          -target arm64-apple-ios16.0 \
+          -swift-version 5 \
+          -parse-as-library \
+          -emit-executable \
+          -o build/Payload/WhiteStudio.app/WhiteStudio \
+          WhiteStudio/*.swift
+
+        PLIST_CONTENT='<?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
@@ -81,8 +58,9 @@ jobs:
                 <string>arm64</string>
             </array>
         </dict>
-        </plist>
-        EOF
+        </plist>'
+
+        printf '%s\n' "$PLIST_CONTENT" > build/Payload/WhiteStudio.app/Info.plist
 
         chmod +x build/Payload/WhiteStudio.app/WhiteStudio
         cd build && zip -r WhiteStudio.ipa Payload
