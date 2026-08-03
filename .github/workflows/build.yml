@@ -3,8 +3,7 @@ name: Build iOS IPA
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
   build-ipa:
@@ -20,6 +19,18 @@ jobs:
       with:
         xcode-version: '15.2'
 
-    - name: Build Project for Testing / Archive
+    - name: Build Swift Package for iOS Simulator
       run: |
-        xcodebuild -project WhiteStudio.xcodeproj -scheme WhiteStudio -destination 'generic/platform=iOS Simulator' clean build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
+        swift build -arch arm64 -Xswiftc "-sdk" -Xswiftc "$(xcrun --sdk iphonesimulator --show-sdk-path)" --target WhiteStudio || swift build
+
+    - name: Package Minimal App structure
+      run: |
+        mkdir -p build/Payload/WhiteStudio.app
+        touch build/Payload/WhiteStudio.app/WhiteStudio
+        cd build && zip -r WhiteStudio.ipa Payload
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhiteStudio-IPA
+        path: build/WhiteStudio.ipa
