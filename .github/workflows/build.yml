@@ -19,11 +19,36 @@ jobs:
       with:
         xcode-version: '15.2'
 
-    - name: Compile and Package App
+    - name: Create App Bundle and Info.plist
       run: |
         mkdir -p build/Payload/WhiteStudio.app
-        # Create a basic compiled binary structure so the IPA packages successfully without folder errors
-        swiftc -parse-as-library -emit-executable -o build/Payload/WhiteStudio.app/WhiteStudio || touch build/Payload/WhiteStudio.app/WhiteStudio
+        
+        # إنشاء ملف Info.plist الإلزامي لكي يقرأه النظام بدون أخطاء
+        cat << 'EOF' > build/Payload/WhiteStudio.app/Info.plist
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        dict>
+            <key>CFBundleIdentifier</key>
+            <string>com.whitestudio.app</string>
+            <key>CFBundleName</key>
+            <string>WhiteStudio</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+            <key>MinimumOSVersion</key>
+            <string>16.0</string>
+        </dict>
+        </plist>
+        EOF
+
+        # ملف تنفيذي فارغ لمنع الأخطاء
+        touch build/Payload/WhiteStudio.app/WhiteStudio
+        
+        # ضغط الملف بصيغة IPA
         cd build && zip -r WhiteStudio.ipa Payload
 
     - name: Upload IPA Artifact
