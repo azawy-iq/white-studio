@@ -81,7 +81,7 @@ class StudioViewModel: ObservableObject {
 struct Movie: Transferable {
     let url: URL
     
-    static var transferRepresentation: TransferRepresentation {
+    static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(contentType: .movie) { movie in
             SentTransferredFile(movie.url)
         } importing: { received in
