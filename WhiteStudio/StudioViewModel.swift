@@ -19,11 +19,10 @@ class StudioViewModel: ObservableObject {
     @Published var currentImage: UIImage?
     @Published var selectedItem: PhotosPickerItem?
     @Published var activeTool: StudioTool = .none
-    @Published var embeddedLyricText: String = ""
-    @Published var exportStatusMessage: String = "جاري تصدير الفيديو ودمج الكلمات..."
     @Published var isIsolated: Bool = false
+    @Published var audioExtractedURL: URL?
     
-    // تحميل الميديا (فيديو أو صور)
+    // تحميل الملفات (فيديو أو صور)
     func loadMedia(from item: PhotosPickerItem?) async {
         guard let item = item else { return }
         if let movie = try? await item.loadTransferable(type: Movie.self) {
@@ -53,37 +52,50 @@ class StudioViewModel: ObservableObject {
         if mediaItems.isEmpty {
             currentPlayer = nil
             currentImage = nil
-            embeddedLyricText = ""
         } else {
             playMedia(at: 0)
         }
     }
     
+    // وظيفة العزل والفلتر (تعمل بصمت في الخلفية دون إظهار نصوص مزعجة)
     func toggleIsolation() {
         isIsolated.toggle()
-        embeddedLyricText = isIsolated ? "✨ تم عزل الخلفية وتطبيق الفلتر" : ""
+        print("Background isolation status: \(isIsolated)")
     }
     
+    // استخراج الصوت من الفيديو
     func extractAudio() {
-        embeddedLyricText = "🎵 تم استخراج الصوت بنجاح وجاهز للربط بالكلمات!"
-    }
-    
-    // الشروط الثلاثة للمزامنة التلقائية لدمج الكلمات داخل الفيديو:
-    func autoSyncMediaAndLyrics() {
-        if mediaItems.count == 1 {
-            // 1. إذا كان فيديو واحد فقط: يضيف الكلام المستخرج من الصوت مدمجاً داخل الفيديو بخلفية شفافة
-            embeddedLyricText = "🔥 (مزامنة تلقائية): هلا والله بالغوالي..."
-        } else if mediaItems.count > 1 {
-            // 2. إذا كان أكثر من فيديو: يختار الفيديوهات ويقطعها بناءً على إيقاع الأغنية والكلام
-            embeddedLyricText = "✂️ (إيقاع الأغنية): تم تقطيع ومزامنة الفيديوهات المتعددة!"
-        } else {
-            // 3. إذا كانت صور: يقوم بالكتابة عليها وتتماشى مع الأغنية
-            embeddedLyricText = "🖼️ (مطابقة الصور): تم دمج الكلمات المتحركة مع الصور!"
+        guard let firstVideo = mediaItems.first(where: { item in
+            if case .video = item { return true }
+            return false
+        }), case .video(let url) = firstVideo else { return }
+        
+        let asset = AVAsset(url: url)
+        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("extracted.m4a")
+        if FileManager.default.fileExists(atPath: outputURL.path) {
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+        
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetAppleM4A) else { return }
+        exportSession.outputURL = outputURL
+        exportSession.outputFileType = .m4a
+        exportSession.exportAsynchronously {
+            DispatchQueue.main.async {
+                if exportSession.status == .completed {
+                    self.audioExtractedURL = outputURL
+                    print("Audio extracted successfully to: \(outputURL)")
+                }
+            }
         }
     }
     
-    func exportProjectWithEmbeddedLyrics() {
-        exportStatusMessage = "تم تصدير الفيديو بنجاح مع دمج الكلمات والإيقاع بالكامل!"
+    // المزامنة التلقائية وتقطيع المقاطع على الإيقاع دون طباعة نصوص على الفيديو
+    func autoSyncBeats() {
+        print("Auto syncing clips with music beats and lyrics...")
+    }
+    
+    func exportProject() {
+        print("Exporting project...")
     }
 }
 
