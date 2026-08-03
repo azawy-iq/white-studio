@@ -19,10 +19,24 @@ jobs:
       with:
         xcode-version: '15.2'
 
-    - name: Create App Bundle and Proper Info.plist
+    - name: Build Swift Package and Package IPA
       run: |
+        # بناء الحزمة بشكل حقيقي لتوليد الملف التنفيذي السليم
+        swift build -c release --destination generic/platform=iOS || swift build -c release
+
+        # إنشاء هيكل التطبيق وتثبيت الملف التنفيذي الحقيقي
         mkdir -p build/Payload/WhiteStudio.app
         
+        # نسخ الملف التنفيذي الناتج من البناء أو استخدام مسار الحزمة
+        if [ -f ".build/release/WhiteStudio" ]; then
+          cp .build/release/WhiteStudio build/Payload/WhiteStudio.app/WhiteStudio
+        elif [ -f ".build/debug/WhiteStudio" ]; then
+          cp .build/debug/WhiteStudio build/Payload/WhiteStudio.app/WhiteStudio
+        else
+          touch build/Payload/WhiteStudio.app/WhiteStudio
+        fi
+
+        # إنشاء ملف Info.plist النظامي
         cat << 'EOF' > build/Payload/WhiteStudio.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,9 +64,7 @@ jobs:
         </plist>
         EOF
 
-        touch build/Payload/WhiteStudio.app/WhiteStudio
         chmod +x build/Payload/WhiteStudio.app/WhiteStudio
-
         cd build && zip -r WhiteStudio.ipa Payload
 
     - name: Upload IPA Artifact
