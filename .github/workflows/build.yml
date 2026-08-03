@@ -23,17 +23,17 @@ jobs:
       run: |
         mkdir -p build/Payload/WhiteStudio.app
         
-        # تجميع ملفات مشروعك الحقيقية الموجودة في مجلد WhiteStudio لإنتاج ملف تنفيذي نظامي Mach-O مقبول 100% للتوقيع
+        # تجميع ملفات مشروعك الحقيقية لهندسة جهاز حقيقي (iphoneos) وليس المحاكي
         if [ -d "WhiteStudio" ]; then
-          swiftc -target arm64-apple-ios16.0-simulator \
-                 -sdk $(xcrun --sdk iphonesimulator --show-sdk-path) \
+          swiftc -target arm64-apple-ios16.0 \
+                 -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
                  -parse-as-library \
                  -emit-executable \
                  -o build/Payload/WhiteStudio.app/WhiteStudio \
                  WhiteStudio/*.swift
         fi
         
-        # في حال حدوث أي استثناء، دمج الكود الأساسي لتشغيل واجهة SwiftUI الحقيقية وتصنيفه فوراً
+        # في حال حدوث أي استثناء، دمج كود احتياطي بسيط بنفس هندسة الجهاز الحقيقي
         if [ ! -f "build/Payload/WhiteStudio.app/WhiteStudio" ]; then
           cat << 'EOF' > main_compile.swift
           import SwiftUI
@@ -46,20 +46,22 @@ jobs:
               }
           }
           EOF
-          swiftc -target arm64-apple-ios16.0-simulator \
-                 -sdk $(xcrun --sdk iphonesimulator --show-sdk-path) \
+          swiftc -target arm64-apple-ios16.0 \
+                 -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
                  -parse-as-library \
                  -emit-executable \
                  -o build/Payload/WhiteStudio.app/WhiteStudio \
                  main_compile.swift
         fi
 
-        # إنشاء ملف Info.plist النظامي المتوافق تماماً مع متطلبات التوقيع
+        # إنشاء ملف Info.plist مع مفتاح CFBundleExecutable المطلوب لأدوات التوقيع
         cat << 'EOF' > build/Payload/WhiteStudio.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
+            <key>CFBundleExecutable</key>
+            <string>WhiteStudio</string>
             <key>CFBundleIdentifier</key>
             <string>com.whitestudio.app</string>
             <key>CFBundleName</key>
